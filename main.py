@@ -11,7 +11,7 @@ from plotly.subplots import make_subplots
 # 1. Page Configuration
 st.set_page_config(page_title="F1 Analytics", layout="wide")
 
-st.title("🏎️ F1 Analytics App")
+st.title("F1 Analytics App 🏎️")
 st.markdown("Analyze F1 data for specific Drivers and Races")
 
 # 2. Sidebar - User Inputs
@@ -38,15 +38,18 @@ with st.sidebar:
     st.warning("⚠️ No driver data available for this specific session via OpenF1 API.")
     st.stop()
 
-  selected_driver = st.selectbox("Driver Number", options=df_driver['full_name'].unique())
+    # Sort the unique driver names alphabetically
+  sorted_driver_list = sorted(df_driver['full_name'].unique())
+  selected_driver = st.selectbox("Select Driver", options=sorted_driver_list)
+  # Get the driver number based on the selection
   driver_number = df_driver.loc[df_driver['full_name'] == selected_driver, 'driver_number'].iloc[0]
   #lap_df, date_start_session = F1_API.get_laps(session_key, driver_number)
 
   st.markdown("---")
   st.markdown("### ⚔️ Compare Drivers")
 
-# removing the selected driver to avoid duplicates
-  available_drivers = df_driver[df_driver['full_name'] != selected_driver]['full_name']
+# Removing the selected driver to avoid duplicates
+  available_drivers = sorted(df_driver[df_driver['full_name'] != selected_driver]['full_name'].unique())
 
   comparison_names = st.multiselect(
     "Select rivals (Max 2)",
@@ -74,6 +77,8 @@ if run_btn:
   st.session_state['laps_data'] = laps_data
   st.session_state['dates_data'] = dates_data
 
+
+
   comp_data = {}
 
   if comparison_names:
@@ -87,6 +92,38 @@ if run_btn:
         comp_data[comp_driver_name] = comp_race_df
 
   st.session_state['comp_data'] = comp_data
+
+if not run_btn:
+  # Displayed when no data is loaded yet
+  st.divider()
+
+  # 1. Hero Section with Image
+  # Using a high-quality F1 related placeholder or local image
+
+  st.markdown("""
+    #### Ready to analyze?
+
+    This dashboard provides data and insights for Formula 1 Races. 
+    To get started, please use the **sidebar on the left**:
+    """)
+
+  # 2. Feature Showcase (3 Columns)
+  col1, col2, col3 = st.columns(3)
+
+  with col1:
+    st.markdown("#### 📉 Car data")
+    st.markdown("Compare speed, throttle, and brake traces lap-by-lap.")
+
+  with col2:
+    st.markdown("#### 🗺️ Track Map")
+    st.markdown("Visualize driver lines and corner speeds on the actual circuit.")
+
+  with col3:
+    st.markdown("#### ⚔️ Rivals")
+    st.markdown("Head-to-head comparison between any two drivers.")
+
+  # 3. Call to Action (Instruction)
+  st.info("👈  Select a Year, Country, and Driver in the sidebar to begin.")
 
 # --- 4. Visualization Logic (Runs on every reload/slider move) ---
 
@@ -237,7 +274,7 @@ if 'race_data' in st.session_state and 'positions_data' in st.session_state:
 
         # --- The Tabs Architecture ---
         tab_telemetry, tab_overview, tab_compare = st.tabs(
-          ["📉 Telemetry Deep Dive", "🏁 Race Overview", "⚔️ Head-to-Head"])
+          ["📉 Car data Deep Dive", "🏁 Race Overview", "⚔️ Head-to-Head"])
 
         # === TAB 1: TELEMETRY (The slider lives here) ===
         with tab_telemetry:
@@ -279,7 +316,7 @@ if 'race_data' in st.session_state and 'positions_data' in st.session_state:
               shared_xaxes=True,  # Critical: Zooming one zooms all
               vertical_spacing=0.06,  # Gap between charts
               row_heights=[0.3, 0.15, 0.15, 0.2, 0.2],  # Speed gets more space
-              subplot_titles=("Speed", "RPM", "Gear", "Throttle", "Brake")
+              subplot_titles=("Speed (km/h)", "RPM", "Gear (num)", "Throttle (%)", "Brake (Y/N)")
             )
 
             # --- Trace 1: Speed (Blue) ---
@@ -416,7 +453,7 @@ if 'race_data' in st.session_state and 'positions_data' in st.session_state:
               shared_xaxes=True,
               vertical_spacing=0.08,
               row_heights=[0.5, 0.25, 0.25],
-              subplot_titles=("Speed Comparison", "Throttle", "Brake")
+              subplot_titles=("Speed Comparison (km/h)", "Throttle (%)", "Brake (Y/N")
             )
 
             for name, df, color in drivers_to_plot:
@@ -472,7 +509,7 @@ if 'race_data' in st.session_state and 'positions_data' in st.session_state:
                 go.Scatter(
                   x=lap_data['dist_norm'], y=lap_data['throttle'],
                   name=f"{name} Throttle", legendgroup=name, showlegend=False,
-                  line=dict(color=color, width=1.5, dash='dot')
+                  line=dict(color=color, width=1.5)
                 ), row=2, col=1
               )
 
