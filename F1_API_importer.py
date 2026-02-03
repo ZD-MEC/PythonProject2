@@ -28,7 +28,6 @@ class F1_API:
             st.error(f"Error fetching sessions: {e}")
             return pd.DataFrame()
 
-
     @staticmethod
     @st.cache_data
     def get_drivers(session_key):
@@ -39,20 +38,40 @@ class F1_API:
             data = response.json()
             df = pd.DataFrame(data)
 
-            if 'driver_number' in df.columns:
-                df = df.dropna(subset=['driver_number'])
+            if not data:
+                return pd.DataFrame(columns=['driver_number', 'full_name', 'name_acronym', 'team_name'])
+
+            # --- 1. Robust Full Name Creation ---
+            # If 'full_name' is missing, create it from first+last, or broadcast_name, or acronym
             if 'full_name' not in df.columns:
-                print("⚠️ Warning: 'full_name' column missing. Using 'broadcast_name' instead.")
+                if 'first_name' in df.columns and 'last_name' in df.columns:
+                    df['full_name'] = df['first_name'].fillna('') + ' ' + df['last_name'].fillna('')
+                elif 'broadcast_name' in df.columns:
+                    df['full_name'] = df['broadcast_name']
+                else:
+                    df['full_name'] = "Driver " + df['driver_number'].astype(str)
 
-                df['full_name'] = df['broadcast_name']
+            # --- 2. Robust Team Name ---
+            # Ensure team_name column exists, default to 'Unknown' if missing
+            if 'team_name' not in df.columns:
+                df['team_name'] = 'Unknown Team'
+            df['team_name'] = df['team_name'].fillna('Unknown Team')
 
+            #3. Handle Acronym
+            if 'name_acronym' not in df.columns:
+                df['name_acronym'] = df['full_name'].str.slice(0, 3).str.upper()
 
-            return df[['driver_number', 'full_name']]
+            # 6. Final Cleanup
+            df = df.dropna(subset=['driver_number'])
+            df['driver_number'] = df['driver_number'].astype(int)
+
+            # Return only safe columns
+            return df[['driver_number', 'full_name', 'name_acronym', 'team_name', 'session_key']]
 
 
         except Exception as e:
             st.error(f"Error fetching drivers: {e}")
-            return pd.DataFrame()
+            return pd.DataFrame(columns=['driver_number', 'full_name', 'name_acronym', 'team_name'])
 
     @staticmethod
     @st.cache_data
@@ -194,4 +213,51 @@ class F1_API:
 
         except Exception as e:
             print(f"Error: {e}")
+            return pd.DataFrame()
+
+    @staticmethod
+    @st.cache_data
+    def get_session_result(session_key):
+        url = f"{F1_API.BASE_URL}/session_result?session_key={session_key}"
+        try:
+            response = requests.get(url, timeout=10)
+            data = response.json()
+            if not data:
+                return pd.DataFrame()
+            return pd.DataFrame(data)
+        except Exception as e:
+            print(f"Error fetching session result: {e}")
+            return pd.DataFrame()
+
+
+    @staticmethod
+    @st.cache_data
+    def get_championship_drivers(session_key):
+        """
+        Fetches driver championship standings directly from the API.
+        """
+        url = f"{F1_API.BASE_URL}/championship_drivers?session_key={session_key}"
+        try:
+            response = requests.get(url, timeout=10)
+            data = response.json()
+            if not data: return pd.DataFrame()
+            return pd.DataFrame(data)
+        except Exception as e:
+            st.error(f"Error fetching driver standings: {e}")
+            return pd.DataFrame()
+
+    @staticmethod
+    @st.cache_data
+    def get_championship_teams(session_key):
+        """
+        Fetches constructor (team) championship standings directly from the API.
+        """
+        url = f"{F1_API.BASE_URL}/championship_teams?session_key={session_key}"
+        try:
+            response = requests.get(url, timeout=10)
+            data = response.json()
+            if not data: return pd.DataFrame()
+            return pd.DataFrame(data)
+        except Exception as e:
+            st.error(f"Error fetching team standings: {e}")
             return pd.DataFrame()
