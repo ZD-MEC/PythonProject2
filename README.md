@@ -1,4 +1,3 @@
-# PythonProject2
 # 🏎️ F1 Data Analysis Dashboard
 
 **Course:** BIU DS22 - Python Class
