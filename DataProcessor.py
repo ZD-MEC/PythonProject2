@@ -1,36 +1,59 @@
 from F1_API_importer import F1_API
 import pandas as pd
-
+import streamlit as st
 
 class DataProcessor:
     @staticmethod
     def get_merged_race_data(session_key, driver_number):
-        # Fetch data
-        lap_df, date_start_session = F1_API.get_laps(session_key, driver_number)
-        df_tel = F1_API.get_telemetry(session_key, driver_number, date_start_session)
-        df_loc = F1_API.get_location(session_key, driver_number, date_start_session)
+        try:
+            lap_df, date_start_session = F1_API.get_laps(session_key, driver_number)
+            df_tel = F1_API.get_telemetry(session_key, driver_number, date_start_session)
+            df_loc = F1_API.get_location(session_key, driver_number, date_start_session)
 
-        # Merge telemetry and location data based on the nearest timestamp
-        df_combined = pd.merge_asof(
-            df_tel,
-            df_loc,
-            on='date',
-            direction='nearest',
-            tolerance=pd.Timedelta('500ms')
-        )
+            # Critical Data Cleaning & Sorting
+            # Convert 'date' to datetime objects to avoid type mismatches
+            df_tel['date'] = pd.to_datetime(df_tel['date'])
+            df_loc['date'] = pd.to_datetime(df_loc['date'])
+            lap_df['date'] = pd.to_datetime(lap_df['date'])
 
-        # Drop rows where no location match was found
-        df_combined = df_combined.dropna(subset=['x', 'y'])
+            # Drop rows with missing dates and sort by date
+            # (This is mandatory for merge_asof to work correctly without crashing)
+            df_tel = df_tel.dropna(subset=['date']).sort_values('date')
+            df_loc = df_loc.dropna(subset=['date']).sort_values('date')
+            lap_df = lap_df.dropna(subset=['date']).sort_values('date')
 
-        # Merge with Lap Number
-        df_combined_2 = pd.merge_asof(
-            df_combined,
-            lap_df[['date', 'lap_number']],
-            on='date',
-            direction='backward'
-        )
+            # Merge based on nearest timestamp (car data and location)
+            df_combined = pd.merge_asof(
+                df_tel,
+                df_loc,
+                on='date',
+                direction='nearest',
+                tolerance=pd.Timedelta('500ms')
+            )
 
-        return df_combined_2
+            # Drop rows where location matching failed (no x, y data)
+            df_combined = df_combined.dropna(subset=['x', 'y'])
+
+            # Merge lap info based on timestamp, adding lap numbers (backward direction)
+            df_combined_2 = pd.merge_asof(
+                df_combined,
+                lap_df[['date', 'lap_number']],
+                on='date',
+                direction='backward'
+            )
+
+            return df_combined_2
+
+        except Exception as e:
+            # Error Handling
+            # Display a user-friendly error in the app
+            st.error(f"⚠️ Error processing race data: {e}")
+
+            # Log the full error to the console for debugging
+            print(f"DEBUG ERROR: {e}")
+
+            # Return an empty DataFrame to prevent the main app from crashing
+            return pd.DataFrame()
 
     @staticmethod
     def get_position_data(session_key):
