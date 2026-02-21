@@ -28,7 +28,7 @@ with st.sidebar:
   valid_races = df_filtered_country[df_filtered_country['session_name'].str.contains('Race|Qualifying', case=False)]
   selected_race = st.selectbox("Select Race", options=  valid_races['session_name'].unique())
   session_row = valid_races[valid_races['session_name'] == selected_race]
-  session_key = int(session_row['session_key'].iloc[0])
+  session_key = int(session_row['session_key'].iloc[0]) # an unique key for each race type in every countery
 
   # 3. Load Drivers for this session
   df_driver = F1_API.get_drivers(session_key)
