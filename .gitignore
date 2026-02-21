@@ -181,3 +181,5 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 /.streamlit/secrets.toml
+main.py
+*.py
