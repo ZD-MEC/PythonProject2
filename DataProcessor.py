@@ -158,7 +158,6 @@ class DataProcessor:
 
         if all_laps.empty: return None
 
-        # --- THE FIX IS HERE: unit='s' ---
         # Without unit='s', 80 seconds becomes 80 nanoseconds (effectively 0)
         all_laps['lap_duration'] = pd.to_timedelta(all_laps['lap_duration'], unit='s')
 
